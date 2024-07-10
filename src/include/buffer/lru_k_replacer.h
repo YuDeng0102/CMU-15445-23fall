@@ -28,40 +28,33 @@ enum class AccessType { Unknown = 0, Lookup, Scan, Index };
 
 class LRUKNode {
  public:
-    LRUKNode(size_t record, size_t k_,bool is_evictable_=false)
-    :history_({record}),k_(k_),is_evictable_(is_evictable_){   }
-    auto get_last_used()->size_t{
-      return history_.back();
+  LRUKNode(size_t record, size_t k_, bool is_evictable_ = false)
+      : history_({record}), k_(k_), is_evictable_(is_evictable_) {}
+  auto GetFirstUsed() -> size_t { return *history_.begin(); }
+  auto GetUsedSize() -> size_t { return history_.size(); }
+  auto IsEvictable() -> bool { return is_evictable_; }
+  auto SetEvictable(bool ok) -> void { is_evictable_ = ok; }
+  auto operator<(LRUKNode &b) const -> bool {
+    auto kb = b.GetUsedSize();
+    auto ka = history_.size();
+    if (std::max(ka, kb) < k_) {
+      return *history_.begin() < b.GetFirstUsed();
     }
-    auto get_first_used()->size_t{
-      return *history_.begin();
+    if (ka == kb) {
+      return *history_.begin() < b.GetFirstUsed();
     }
-    auto get_used_size()->size_t{
-      return history_.size();
+    return ka < kb;
+  }
+  void InsertRecord(size_t record) {
+    if (history_.size() < k_) {
+      history_.push_back(record);
+      return;
     }
-    auto is_evictable()->bool{
-       return  is_evictable_;
-    }
-    auto set_evictable(bool ok)->void{
-      is_evictable_=ok;
-    }
-    bool operator<(LRUKNode& b)const {
-        auto kb=b.get_used_size();
-        auto ka=history_.size();
-        if(std::max(ka,kb)<k_){
-          return history_.back()<b.get_last_used();
-        } else {
-          if(ka==kb){
-            return *history_.begin()<b.get_first_used();
-          } 
-          return ka<kb;
-        }
-    }
-    void insert_record(size_t record){
-        if(history_.size()<k_) history_.push_back(record);
-        history_.pop_front();
-        history_.push_back(record);
-    }
+    history_.pop_front();
+    history_.push_back(record);
+  }
+  void ClearHistory() { history_.clear(); }
+
  private:
   /** History of last seen K timestamps of this page. Least recent timestamp stored in front. */
   // Remove maybe_unused if you start using them. Feel free to change the member variables as you want.
@@ -151,7 +144,7 @@ class LRUKReplacer {
    * For other scenarios, this function should terminate without modifying anything.
    *
    * @param frame_id id of frame whose 'evictable' status will be modified
-   * @param set_evictable whether the given frame is evictable or not
+   * @param SetEvictable whether the given frame is evictable or not
    */
   void SetEvictable(frame_id_t frame_id, bool set_evictable);
 

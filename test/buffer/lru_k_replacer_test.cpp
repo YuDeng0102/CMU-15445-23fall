@@ -12,6 +12,7 @@
 #include <thread>  // NOLINT
 #include <vector>
 
+#include "common/config.h"
 #include "gtest/gtest.h"
 
 namespace bustub {
@@ -94,5 +95,31 @@ TEST(LRUKReplacerTest, SampleTest) {
   // This operation should not modify size
   ASSERT_EQ(false, lru_replacer.Evict(&value));
   ASSERT_EQ(0, lru_replacer.Size());
+}
+TEST(LRUKReplacerTest, MYTEST_1) {
+  LRUKReplacer lru_replacer(7, 3);
+  ASSERT_EQ(0, lru_replacer.Size());
+
+  lru_replacer.RecordAccess(2);
+  lru_replacer.RecordAccess(3);
+  lru_replacer.RecordAccess(4);
+  lru_replacer.RecordAccess(1);
+
+  lru_replacer.SetEvictable(1, true);
+  lru_replacer.SetEvictable(2, true);
+  lru_replacer.SetEvictable(3, true);
+  lru_replacer.SetEvictable(4, true);
+
+  lru_replacer.RecordAccess(1);
+  lru_replacer.RecordAccess(2);
+  lru_replacer.RecordAccess(3);
+  lru_replacer.RecordAccess(4);
+
+  lru_replacer.RecordAccess(2);
+  lru_replacer.RecordAccess(3);
+
+  frame_id_t frame_id;
+  lru_replacer.Evict(&frame_id);
+  ASSERT_EQ(4, frame_id);
 }
 }  // namespace bustub
