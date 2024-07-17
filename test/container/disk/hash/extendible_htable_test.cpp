@@ -23,7 +23,7 @@
 namespace bustub {
 
 // NOLINTNEXTLINE
-TEST(ExtendibleHTableTest, DISABLED_InsertTest1) {
+TEST(ExtendibleHTableTest, InsertTest1) {
   auto disk_mgr = std::make_unique<DiskManagerUnlimitedMemory>();
   auto bpm = std::make_unique<BufferPoolManager>(50, disk_mgr.get());
 
@@ -48,7 +48,7 @@ TEST(ExtendibleHTableTest, DISABLED_InsertTest1) {
 }
 
 // NOLINTNEXTLINE
-TEST(ExtendibleHTableTest, DISABLED_InsertTest2) {
+TEST(ExtendibleHTableTest, InsertTest2) {
   auto disk_mgr = std::make_unique<DiskManagerUnlimitedMemory>();
   auto bpm = std::make_unique<BufferPoolManager>(50, disk_mgr.get());
 
@@ -91,7 +91,7 @@ TEST(ExtendibleHTableTest, DISABLED_InsertTest2) {
 }
 
 // NOLINTNEXTLINE
-TEST(ExtendibleHTableTest, DISABLED_RemoveTest1) {
+TEST(ExtendibleHTableTest, RemoveTest1) {
   auto disk_mgr = std::make_unique<DiskManagerUnlimitedMemory>();
   auto bpm = std::make_unique<BufferPoolManager>(50, disk_mgr.get());
 
@@ -153,6 +153,61 @@ TEST(ExtendibleHTableTest, DISABLED_RemoveTest1) {
     ASSERT_EQ(0, res.size());
   }
 
+  ht.VerifyIntegrity();
+}
+
+TEST(ExtendibleHTableTest, RemoveTest2) {
+  auto disk_mgr = std::make_unique<DiskManagerUnlimitedMemory>();
+  auto bpm = std::make_unique<BufferPoolManager>(50, disk_mgr.get());
+
+  DiskExtendibleHashTable<int, int, IntComparator> ht("blah", bpm.get(), IntComparator(), HashFunction<int>(), 1, 3, 1);
+
+  int num_keys = 3;
+
+  // insert some values
+  for (int i = 0; i < num_keys; i++) {
+    bool inserted = ht.Insert(i, i);
+    ASSERT_TRUE(inserted);
+    std::vector<int> res;
+    ht.GetValue(i, &res);
+    ASSERT_EQ(1, res.size());
+    ASSERT_EQ(i, res[0]);
+  }
+
+  ht.VerifyIntegrity();
+
+  // check that they were actually inserted
+  for (int i = 0; i < num_keys; i++) {
+    std::vector<int> res;
+    bool got_value = ht.GetValue(i, &res);
+    ASSERT_TRUE(got_value);
+    ASSERT_EQ(1, res.size());
+    ASSERT_EQ(i, res[0]);
+  }
+
+  ht.VerifyIntegrity();
+
+  // try to get some keys that don't exist/were not inserted
+  for (int i = num_keys; i < 2 * num_keys; i++) {
+    std::vector<int> res;
+    bool got_value = ht.GetValue(i, &res);
+    ASSERT_FALSE(got_value);
+    ASSERT_EQ(0, res.size());
+  }
+
+  ht.VerifyIntegrity();
+  ht.PrintHT();
+  // remove the keys we inserted
+  auto remove_num = std::vector<uint32_t>({0, 1});
+  for (uint32_t j = 0; j < remove_num.size(); j++) {
+    auto i = remove_num[j];
+    bool removed = ht.Remove(i);
+    ASSERT_TRUE(removed);
+    std::vector<int> res;
+    ht.GetValue(i, &res);
+    ASSERT_EQ(0, res.size());
+  }
+  ht.PrintHT();
   ht.VerifyIntegrity();
 }
 

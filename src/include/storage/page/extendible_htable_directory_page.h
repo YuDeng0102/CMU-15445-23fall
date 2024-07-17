@@ -136,6 +136,8 @@ class ExtendibleHTableDirectoryPage {
    */
   auto CanShrink() -> bool;
 
+  void Shrink();
+
   /**
    * @return the current directory size
    */
