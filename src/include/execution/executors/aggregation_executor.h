@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <unordered_map>
 #include <utility>
@@ -24,6 +25,9 @@
 #include "execution/expressions/abstract_expression.h"
 #include "execution/plans/aggregation_plan.h"
 #include "storage/table/tuple.h"
+#include "type/type.h"
+#include "type/type_id.h"
+#include "type/value.h"
 #include "type/value_factory.h"
 
 namespace bustub {
@@ -72,12 +76,41 @@ class SimpleAggregationHashTable {
    */
   void CombineAggregateValues(AggregateValue *result, const AggregateValue &input) {
     for (uint32_t i = 0; i < agg_exprs_.size(); i++) {
+      auto val = input.aggregates_[i];
+      auto &res = result->aggregates_[i];
+      if (agg_types_[i] != AggregationType::CountStarAggregate && val.IsNull()) {
+        continue;
+      }
       switch (agg_types_[i]) {
         case AggregationType::CountStarAggregate:
+          res = res.Add(Value(TypeId::INTEGER, 1));
+          break;
         case AggregationType::CountAggregate:
+          if (res.IsNull()) {
+            res = Value(TypeId::INTEGER, 1);
+          } else {
+            res = res.Add(Value(TypeId::INTEGER, 1));
+          }
+          break;
         case AggregationType::SumAggregate:
+          if (res.IsNull()) {
+            res = Value(TypeId::INTEGER, 0);
+          }
+          res = res.Add(val);
+          break;
         case AggregationType::MinAggregate:
+          if (res.IsNull()) {
+            res = Value(val);
+          } else {
+            res = res.CompareGreaterThan(val) == CmpBool::CmpTrue ? val : res;
+          }
+          break;
         case AggregationType::MaxAggregate:
+          if (res.IsNull()) {
+            res = Value(val);
+          } else {
+            res = res.CompareGreaterThan(val) == CmpBool::CmpTrue ? res : val;
+          }
           break;
       }
     }
@@ -203,9 +236,12 @@ class AggregationExecutor : public AbstractExecutor {
   std::unique_ptr<AbstractExecutor> child_executor_;
 
   /** Simple aggregation hash table */
-  // TODO(Student): Uncomment SimpleAggregationHashTable aht_;
+  SimpleAggregationHashTable aht_;
 
   /** Simple aggregation hash table iterator */
-  // TODO(Student): Uncomment SimpleAggregationHashTable::Iterator aht_iterator_;
+  SimpleAggregationHashTable::Iterator aht_iterator_;
+
+  bool is_done_{false};
+  bool is_inited_{false};
 };
 }  // namespace bustub

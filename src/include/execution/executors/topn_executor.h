@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include "common/rid.h"
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/seq_scan_plan.h"
@@ -34,6 +35,8 @@ class TopNExecutor : public AbstractExecutor {
    * @param exec_ctx The executor context
    * @param plan The TopN plan to be executed
    */
+
+  using PTR = std::pair<Tuple, RID>;
   TopNExecutor(ExecutorContext *exec_ctx, const TopNPlanNode *plan, std::unique_ptr<AbstractExecutor> &&child_executor);
 
   /** Initialize the TopN */
@@ -63,5 +66,9 @@ class TopNExecutor : public AbstractExecutor {
   const TopNPlanNode *plan_;
   /** The child executor from which tuples are obtained */
   std::unique_ptr<AbstractExecutor> child_executor_;
+
+  std::priority_queue<PTR, std::vector<PTR>, std::function<bool(const PTR &, const PTR &)>> heap_;
+  std::vector<PTR> values_;
+  uint32_t cursor_{0};
 };
 }  // namespace bustub

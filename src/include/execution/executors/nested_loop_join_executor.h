@@ -14,9 +14,11 @@
 
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
+#include "execution/expressions/abstract_expression.h"
 #include "execution/plans/nested_loop_join_plan.h"
 #include "storage/table/tuple.h"
 
@@ -55,6 +57,15 @@ class NestedLoopJoinExecutor : public AbstractExecutor {
  private:
   /** The NestedLoopJoin plan node to be executed. */
   const NestedLoopJoinPlanNode *plan_;
+
+  std::unique_ptr<AbstractExecutor> left_executor_, right_executor_;
+
+  Tuple left_tuple_;
+  RID left_rid_;
+  bool is_find_{false};
+  bool left_state_{false};
+  AbstractExpressionRef predicate_;
+  std::vector<Tuple> right_tuples_;
 };
 
 }  // namespace bustub
