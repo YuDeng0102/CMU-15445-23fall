@@ -1,6 +1,7 @@
 #pragma once
 
 #include <unordered_map>
+#include <set>
 
 #include "concurrency/transaction.h"
 #include "storage/table/tuple.h"
@@ -33,7 +34,8 @@ class Watermark {
   timestamp_t commit_ts_;
 
   timestamp_t watermark_;
-
+  
+  std::set<timestamp_t>times_;
   std::unordered_map<timestamp_t, int> current_reads_;
 };
 

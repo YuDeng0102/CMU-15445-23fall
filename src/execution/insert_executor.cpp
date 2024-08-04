@@ -12,6 +12,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include "catalog/schema.h"
 #include "storage/table/tuple.h"
 #include "type/type_id.h"
@@ -19,6 +20,7 @@
 
 #include <sys/types.h>
 #include "execution/executors/insert_executor.h"
+#include"concurrency/transaction_manager.h"
 
 namespace bustub {
 
@@ -37,10 +39,13 @@ auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
   auto catalog = this->exec_ctx_->GetCatalog();
   auto table_info = catalog->GetTable(plan_->table_oid_);
   auto indexs = catalog->GetTableIndexes(table_info->name_);
-
+  auto txn=exec_ctx_->GetTransaction();
+  auto txn_mgr=exec_ctx_->GetTransactionManager();
   while (child_executor_->Next(tuple, rid)) {
-    auto t_rid = table_info->table_->InsertTuple(TupleMeta({0, false}), *tuple);
+    auto t_rid = table_info->table_->InsertTuple(TupleMeta({txn->GetTransactionTempTs(), false}), *tuple);
     *rid = *t_rid;
+    txn->AppendWriteSet(table_info->oid_, *rid);
+    txn_mgr->UpdateVersionLink(*rid,std::nullopt);
     for (auto index : indexs) {
       auto key_tuple = tuple->KeyFromTuple(table_info->schema_, index->key_schema_, index->index_->GetKeyAttrs());
       index->index_->InsertEntry(key_tuple, *rid, this->exec_ctx_->GetTransaction());
