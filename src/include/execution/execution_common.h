@@ -16,6 +16,10 @@ auto ReconstructTuple(const Schema *schema, const Tuple &base_tuple, const Tuple
 void TxnMgrDbg(const std::string &info, TransactionManager *txn_mgr, const TableInfo *table_info,
                TableHeap *table_heap);
 
+auto IsWriteWriteConflict(RID *rid, TableInfo *table_info, Transaction *txn) -> bool;
+
+auto GetSubSchema(const UndoLog &undo_log, const Schema *schema) -> Schema;
+auto GetSubSchema(const std::vector<bool> &modified_fields_, const Schema *schema) -> Schema;
 // Add new functions as needed... You are likely need to define some more functions.
 //
 // To give you a sense of what can be shared across executors / transaction manager, here are the

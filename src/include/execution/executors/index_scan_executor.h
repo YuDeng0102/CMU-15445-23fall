@@ -19,7 +19,9 @@
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/index_scan_plan.h"
 #include "storage/table/tuple.h"
-
+#include"concurrency/transaction_manager.h"
+#include"concurrency/transaction.h"
+#include"execution/execution_common.h"
 namespace bustub {
 
 /**

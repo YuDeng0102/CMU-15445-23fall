@@ -25,6 +25,7 @@
 #include "common/config.h"
 #include "common/exception.h"
 #include "common/macros.h"
+#include "common/rid.h"
 #include "concurrency/transaction.h"
 #include "execution/execution_common.h"
 #include "storage/table/table_heap.h"
@@ -43,7 +44,8 @@ auto TransactionManager::Begin(IsolationLevel isolation_level) -> Transaction * 
   txn_map_.insert(std::make_pair(txn_id, std::move(txn)));
 
   // TODO(fall2023): set the timestamps here. Watermark updated below.
-  txn_ref->read_ts_=last_commit_ts_.load();
+  std::lock_guard<std::mutex> commit_lck(commit_mutex_);
+  txn_ref->read_ts_ = last_commit_ts_.load();
 
   running_txns_.AddTxn(txn_ref->read_ts_);
   return txn_ref;
@@ -70,19 +72,18 @@ auto TransactionManager::Commit(Transaction *txn) -> bool {
 
   // TODO(fall2023): Implement the commit logic!
 
-  std::unique_lock<std::mutex> lck(commit_mutex_);
-  txn->commit_ts_=last_commit_ts_.load();
-  for(auto& [table_oid,s] :txn->GetWriteSets()){
-    auto table_info=catalog_->GetTable(table_oid);
-    for(auto& rid:s){
-      auto meta=table_info->table_->GetTupleMeta(rid);
-      meta.ts_=txn->commit_ts_;
-      table_info->table_->UpdateTupleMeta(meta,rid);
+  // std::unique_lock<std::mutex> lck(commit_mutex_);
+  txn->commit_ts_ = last_commit_ts_.load() + 1;
+  for (auto &[table_oid, s] : txn->GetWriteSets()) {
+    auto table_info = catalog_->GetTable(table_oid);
+    for (auto &rid : s) {
+      auto meta = table_info->table_->GetTupleMeta(rid);
+      meta.ts_ = txn->commit_ts_;
+      table_info->table_->UpdateTupleMeta(meta, rid);
     }
   }
   // TODO(fall2023): set commit timestamp + update last committed timestamp here.
-  
-  
+
   txn->state_ = TransactionState::COMMITTED;
   running_txns_.UpdateCommitTs(txn->commit_ts_);
   running_txns_.RemoveTxn(txn->read_ts_);
@@ -102,6 +103,51 @@ void TransactionManager::Abort(Transaction *txn) {
   running_txns_.RemoveTxn(txn->read_ts_);
 }
 
-void TransactionManager::GarbageCollection() { UNIMPLEMENTED("not implemented"); }
+void TransactionManager::GarbageCollection() {
+  std::vector<txn_id_t> remove_tx;
+  std::unordered_set<RID> visited_records;
+  std::unordered_map<txn_id_t, uint32_t> txn_free_cnt;
+  auto ts = GetWatermark();
+  for (const auto &[tx_id, txn] : txn_map_) {
+    if (txn->state_ != TransactionState::COMMITTED && txn->state_ != TransactionState::ABORTED) {
+      continue;
+    }
+
+    if (txn->GetUndoLogNum() == 0U) {
+      remove_tx.emplace_back(tx_id);
+    }
+    for (auto &[oid, writeset] : txn->GetWriteSets()) {
+      for (auto &rid : writeset) {
+        if (visited_records.count(rid)) {
+          continue;
+        }
+        visited_records.insert(rid);
+        bool ok = catalog_->GetTable(oid)->table_->GetTupleMeta(rid).ts_ <= ts;
+        auto head = GetVersionLink(rid);
+        if (head.has_value()) {
+          auto undo_link = head->prev_;
+          while (undo_link.IsValid()) {
+            if (!txn_map_.count(undo_link.prev_txn_)) {
+              break;
+            }
+            const auto next_txn = txn_map_.at(undo_link.prev_txn_);
+            const auto undo_log = next_txn->GetUndoLog(undo_link.prev_log_idx_);
+            if (undo_log.ts_ < ts && ok) {
+              txn_free_cnt[undo_link.prev_txn_]++;
+              if (txn_free_cnt[undo_link.prev_txn_] == next_txn->GetUndoLogNum()) {
+                remove_tx.emplace_back(undo_link.prev_txn_);
+              }
+            }
+            ok |= undo_log.ts_ <= ts;
+            undo_link = undo_log.prev_version_;
+          }
+        }
+      }
+    }
+  }
+  for (auto txn_id : remove_tx) {
+    txn_map_.erase(txn_id);
+  }
+}
 
 }  // namespace bustub
