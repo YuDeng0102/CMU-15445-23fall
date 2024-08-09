@@ -16,6 +16,9 @@
 #include <utility>
 #include <vector>
 
+#include "catalog/catalog.h"
+#include "concurrency/transaction.h"
+#include "concurrency/transaction_manager.h"
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
 #include "execution/plans/update_plan.h"
@@ -56,6 +59,8 @@ class UpdateExecutor : public AbstractExecutor {
 
   /** @return The output schema for the update */
   auto GetOutputSchema() const -> const Schema & override { return plan_->OutputSchema(); }
+  auto CheckPrimaryKeyUpdated(const Tuple &new_tuple, const Tuple &old_tuple, Schema *schema, IndexInfo *primary_index)
+      -> bool;
 
  private:
   /** The update plan node to be executed */
@@ -67,5 +72,10 @@ class UpdateExecutor : public AbstractExecutor {
   /** The child executor to obtain value from */
   std::unique_ptr<AbstractExecutor> child_executor_;
   bool is_done_{false};
+  std::vector<std::pair<RID, Tuple>> old_tuples_;
+  std::vector<Tuple> target_tuples_;
+  Transaction *txn_;
+  TransactionManager *txn_mgr_;
+  IndexInfo *primary_index_;
 };
 }  // namespace bustub

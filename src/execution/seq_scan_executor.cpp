@@ -43,7 +43,7 @@ void SeqScanExecutor::Init() {
       continue;
     }
     auto undo_link = txn_manager->GetUndoLink(base_tuple.GetRid());
-    if (undo_link == std::nullopt) {
+    if (undo_link == std::nullopt || !undo_link->IsValid()) {
       continue;
     }
     std::vector<UndoLog> undo_logs;
@@ -51,8 +51,8 @@ void SeqScanExecutor::Init() {
     while (undo_link->IsValid()) {
       std::unique_lock<std::shared_mutex> l(txn_manager->txn_map_mutex_);
       auto tem_txn = txn_manager->txn_map_[undo_link->prev_txn_];
-      const auto &undo_log = tem_txn->GetUndoLog(undo_link->prev_log_idx_);
       l.unlock();
+      const auto &undo_log = tem_txn->GetUndoLog(undo_link->prev_log_idx_);
 
       if (undo_log.ts_ <= ts || undo_log.ts_ == txn->GetTransactionId()) {
         undo_logs.emplace_back(undo_log);

@@ -487,7 +487,9 @@ TEST(TxnExecutorTest, GarbageCollection) {  // NOLINT
   BumpCommitTs(*bustub, 2);
   auto txn2 = BeginTxn(*bustub, "txn2");
   auto txn2_id = txn2->GetTransactionId();
+  TxnMgrDbg("before Update", bustub->txn_manager_.get(), table_info, table_info->table_.get());
   WithTxn(txn2, ExecuteTxn(*bustub, _var, _txn, "UPDATE table1 SET a = a + 10"));
+  TxnMgrDbg("after Update", bustub->txn_manager_.get(), table_info, table_info->table_.get());
   WithTxn(txn2, QueryShowResult(*bustub, _var, _txn, query, IntResult{{10, 0, 0}, {11, 1, 1}, {12, 2, 2}, {13, 3, 3}}));
   WithTxn(txn2, CommitTxn(*bustub, _var, _txn));
   BumpCommitTs(*bustub, 2);

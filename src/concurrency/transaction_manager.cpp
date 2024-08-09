@@ -80,6 +80,10 @@ auto TransactionManager::Commit(Transaction *txn) -> bool {
       auto meta = table_info->table_->GetTupleMeta(rid);
       meta.ts_ = txn->commit_ts_;
       table_info->table_->UpdateTupleMeta(meta, rid);
+      auto version_link = GetVersionLink(rid);
+      if (version_link.has_value()) {
+        UpdateVersionLink(rid, VersionUndoLink{version_link->prev_, false});
+      }
     }
   }
   // TODO(fall2023): set commit timestamp + update last committed timestamp here.
@@ -118,7 +122,7 @@ void TransactionManager::GarbageCollection() {
     }
     for (auto &[oid, writeset] : txn->GetWriteSets()) {
       for (auto &rid : writeset) {
-        if (visited_records.count(rid)) {
+        if (visited_records.count(rid) != 0U) {
           continue;
         }
         visited_records.insert(rid);
@@ -127,7 +131,7 @@ void TransactionManager::GarbageCollection() {
         if (head.has_value()) {
           auto undo_link = head->prev_;
           while (undo_link.IsValid()) {
-            if (!txn_map_.count(undo_link.prev_txn_)) {
+            if (txn_map_.count(undo_link.prev_txn_) == 0U) {
               break;
             }
             const auto next_txn = txn_map_.at(undo_link.prev_txn_);

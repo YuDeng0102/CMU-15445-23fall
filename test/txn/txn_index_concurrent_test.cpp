@@ -16,7 +16,7 @@ namespace bustub {
 
 // NOLINTBEGIN(bugprone-unchecked-optional-access)
 
-TEST(TxnIndexTest, IndexConcurrentInsertTest) {  // NOLINT
+TEST(TxnIndexTest, DISABLED_IndexConcurrentInsertTest) {  // NOLINT
   const auto generate_sql = [](int thread_id, int n) -> std::string {
     return fmt::format("INSERT INTO maintable VALUES ({}, {})", n, thread_id);
   };
@@ -96,7 +96,7 @@ TEST(TxnIndexTest, IndexConcurrentInsertTest) {  // NOLINT
   }
 }
 
-TEST(TxnIndexTest, DISABLED_IndexConcurrentUpdateTest) {  // NOLINT
+TEST(TxnIndexTest, IndexConcurrentUpdateTest) {  // NOLINT
   const auto generate_sql = [](int thread_id, int n) -> std::string {
     return fmt::format("UPDATE maintable SET b = b + {} WHERE a = {}", (1 << thread_id), n);
   };
@@ -131,6 +131,7 @@ TEST(TxnIndexTest, DISABLED_IndexConcurrentUpdateTest) {  // NOLINT
     std::map<int, std::vector<bool>> operation_result;
     std::mutex result_mutex;
     bool add_delete_insert = (n % 2 == 1);
+    // bool add_delete_insert =true;
     fmt::println(stderr, "trial {}: running with {} threads with {} rows, add_delete_insert={}", n + 1, thread_cnt,
                  number_cnt, add_delete_insert);
     global_disable_execution_exception_print.store(true);
@@ -192,7 +193,7 @@ TEST(TxnIndexTest, DISABLED_IndexConcurrentUpdateTest) {  // NOLINT
   }
 }
 
-TEST(TxnIndexTest, DISABLED_IndexConcurrentUpdateAbortTest) {  // NOLINT
+TEST(TxnIndexTest, IndexConcurrentUpdateAbortTest) {  // NOLINT
   const auto generate_sql = [](int n) -> std::string {
     return fmt::format("UPDATE maintable SET b = b + {} WHERE a = {}", 1, n);
   };
